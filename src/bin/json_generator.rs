@@ -63,7 +63,7 @@ struct OptionalArguments {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let options = OptionalArguments::from_args();
-    let json = Generator::generate_json(&ALPHABET, options.number_of_letters, options.depth, options.number_of_children)?;
+    let json = Generator::generate_json(ALPHABET, options.number_of_letters, options.depth, options.number_of_children)?;
 
     if options.print {
         println!("{}", serde_json::to_string_pretty(&json)?);

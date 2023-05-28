@@ -52,6 +52,12 @@ impl MathDataCollector {
     }
 }
 
+impl Default for MathDataCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

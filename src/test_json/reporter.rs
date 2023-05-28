@@ -29,3 +29,9 @@ impl<'a> Report<'a> {
         &self.measurement_duration
     }
 }
+
+impl<'a> Default for Report<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

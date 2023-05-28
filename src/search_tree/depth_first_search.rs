@@ -40,7 +40,7 @@ mod tests {
     use super::*;
     /* #endregion */
 
-    const MESSLY_JSON: Lazy<Value> = Lazy::new(|| json!({
+    static  MESSLY_JSON: Lazy<Value> = Lazy::new(|| json!({
         "a": {
             "b": [
                 0,

@@ -15,7 +15,7 @@ pub fn run(root: &Value, value_to_find: &Value) -> bool {
             match current_node {
                 Value::Array(array) => {
                     for value in array {
-                        next_level_nodes.push(&value)
+                        next_level_nodes.push(value)
                     }
                 }
                 Value::Object(map) => {
@@ -23,7 +23,7 @@ pub fn run(root: &Value, value_to_find: &Value) -> bool {
                         if key == value_to_find {
                             return true;
                         } else {
-                            next_level_nodes.push(&value);
+                            next_level_nodes.push(value);
                         }
                     }
                 },
@@ -50,7 +50,7 @@ mod tests {
     use super::*;
     /* #endregion */
 
-    const MESSLY_JSON: Lazy<Value> = Lazy::new(|| {
+    static MESSLY_JSON: Lazy<Value> = Lazy::new(|| {
         json!({
             "a": {
                 "b": [

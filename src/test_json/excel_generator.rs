@@ -193,14 +193,12 @@ impl<'a> ExcelGenerator<'a> {
             current_row_number += 1;
         }
 
-        match column_cpu_usage.get_average() {
-            Some(average) => worksheet.write_number(8, 1, average, format_borader_center)?,
-            None => (),
+        if let Some(average) = column_cpu_usage.get_average() {
+            worksheet.write_number(8, 1, average, format_borader_center)?
         }
 
-        match column_ram_usage.get_average() {
-            Some(average) => worksheet.write_number(9, 1, average, format_borader_center)?,
-            None => (),
+        if let Some(average) = column_ram_usage.get_average() {
+            worksheet.write_number(9, 1, average, format_borader_center)?
         }
         /* #endregion */
 

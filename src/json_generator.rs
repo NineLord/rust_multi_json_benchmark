@@ -94,7 +94,7 @@ impl Generator {
     fn get_random_node_name(&self) -> String {
         let mut string_builder = String::with_capacity(self.number_of_letters);
         for _count in 0..self.number_of_letters {
-            string_builder.push(self.get_random_node_character().clone());
+            string_builder.push(*self.get_random_node_character());
         }
         string_builder
     }

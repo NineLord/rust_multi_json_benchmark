@@ -55,7 +55,7 @@ static CHARACTER_POLL: &str = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxY
 
 /* #region CLI Arguments */
 fn parse_duration_from_millis(source: &str) -> Result<Duration, ParseIntError> {
-    let millis = u64::from_str_radix(source, 10)?;
+    let millis = source.parse()?;
     Ok(Duration::from_millis(millis))
 }
 
