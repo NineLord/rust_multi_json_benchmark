@@ -1,4 +1,4 @@
-// #![allow(unused, dead_code)]
+#![allow(unused, dead_code)] // Shaked-TODO: delete this
 
 pub mod json_generator;
 
@@ -14,6 +14,7 @@ pub mod search_tree {
 }
 
 pub mod test_json {
+    pub mod config;
     pub mod reporter;
     pub mod pc_usage_exporter;
     pub mod excel_generator;
