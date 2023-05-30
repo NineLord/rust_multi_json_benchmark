@@ -15,7 +15,8 @@ pub mod search_tree {
 
 pub mod test_json {
     pub mod config;
-    pub mod reporter;
-    pub mod pc_usage_exporter;
     pub mod excel_generator;
+    pub mod measurement_types;
+    pub mod reporter;
+    pub mod run_test_loop;
 }

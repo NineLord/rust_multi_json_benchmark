@@ -17,6 +17,7 @@ use home::home_dir;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use serde_json::{ Value, json };
+use tokio::runtime::Builder;
 
 // Project
 use rust_multi_json_benchmark::json_generator;
@@ -24,7 +25,6 @@ use rust_multi_json_benchmark::search_tree::{ breadth_first_search, depth_first_
 use rust_multi_json_benchmark::test_json::{
     config::{Config, Configs},
     reporter::Report,
-    pc_usage_exporter,
     excel_generator::ExcelGenerator
 };
 /* #endregion */
@@ -94,6 +94,10 @@ struct OptionalArguments {
     #[structopt(short, long, parse(try_from_str = parse_none_zero_u8), default_value = "3")]
     thread_count: u8,
 
+    /// If set, will run the program with single thread only (like NodeJS), the '--thread-count' flag will be ignored.
+    #[structopt(long)]
+    single_thread: bool,
+
     /// Prints additional debug information
     #[structopt(short = "D", long)]
     debug: bool,
@@ -104,9 +108,17 @@ struct OptionalArguments {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let options = OptionalArguments::from_args();
-    if options.debug {
-        println!("{:#?}", options);
-    }
+    let runtime = if options.single_thread {
+        Builder::new_current_thread().build()?
+    } else {
+        Builder::new_multi_thread().worker_threads(options.thread_count.into()).build()?
+    };
+
+    runtime.block_on(async move {
+        if options.debug {
+            println!("{:#?}", options);
+        }
+    });
 
     // let mut excel_generator = ExcelGenerator::new(
     //     options.path_to_save_file.to_str().ok_or("Invalid path to save file")?,
