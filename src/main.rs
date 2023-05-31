@@ -8,7 +8,7 @@ use std::{
     time::Duration,
     error::Error,
     path::{Path, PathBuf},
-    sync::mpsc,
+    sync::{mpsc, Arc},
     num::ParseIntError,
 };
 
@@ -17,10 +17,10 @@ use home::home_dir;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use serde_json::{ Value, json };
-use tokio::runtime::Builder;
+use tokio::{runtime::Builder, sync::RwLock};
 
 // Project
-use rust_multi_json_benchmark::json_generator;
+use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE}};
 use rust_multi_json_benchmark::search_tree::{ breadth_first_search, depth_first_search };
 use rust_multi_json_benchmark::test_json::{
     config::{Config, Configs},
@@ -106,21 +106,58 @@ struct OptionalArguments {
 
 // Example: Shaked-TODO make an example
 
+async fn foo(num: i32) {
+    println!("[{}] Hello!", num);
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+    println!("[{}] Goodbye!", num);
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let options = OptionalArguments::from_args();
     let runtime = if options.single_thread {
-        Builder::new_current_thread().build()?
+        Builder::new_current_thread()
+            .enable_all()
+            .build()
     } else {
-        Builder::new_multi_thread().worker_threads(options.thread_count.into()).build()?
-    };
+        Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(options.thread_count.into())
+            .build()
+    }.expect("Failed building the Runtime");
 
-    runtime.block_on(async move {
-        if options.debug {
-            println!("{:#?}", options);
-        }
-        // tokio::task::spawn(async {}); // Don't block here! need to have .await very soon here
-        // tokio::task::spawn_blocking(|| {}); // blocking here is ok!
-    });
+    runtime.block_on(async { async_main(options).await })
+}
+
+async fn async_main(options: OptionalArguments) -> Result<(), Box<dyn Error>> {
+    if options.debug {
+        println!("{:#?}", options);
+    }
+
+    let mut handlers = vec!();
+    for index in 0..10 {
+        // let mut reporter = Arc::clone(&REPORT_INSTANCE);
+        let handler = tokio::task::spawn(async move {
+            // reporter.write().await
+            //     .async_measure(format!("test_count {}", index), "json_name", MeasurementType::GenerateJson, || foo(index)).await;
+            foo(index).await;
+        });
+        handlers.push(handler);
+    }
+
+    for handler in handlers {
+        handler.await?;
+    }
+
+    {
+        let y = REPORT_INSTANCE.read().await;
+        let x = y.get_measures();
+        println!("Result: {:#?}", x);
+    }
+
+    // tokio::task::spawn(async {}); // Don't block here! need to have .await very soon here
+    // tokio::task::spawn_blocking(|| {}); // blocking here is ok!
+
+    Ok(())
 
     // let mut excel_generator = ExcelGenerator::new(
     //     options.path_to_save_file.to_str().ok_or("Invalid path to save file")?,
@@ -191,6 +228,4 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     //     excel_generator.append_worksheet(format!("Test {}", count + 1), reporter.get_measures(), &pc_usage)?;
     // }
-
-    Ok(())
 }
