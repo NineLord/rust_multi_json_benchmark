@@ -3,19 +3,22 @@
 use std::time::{SystemTime, Duration};
 use std::collections::HashMap;
 use std::future::Future;
+use std::sync::{RwLock, RwLockReadGuard};
 
 // Project
 use super::measurement_types::MeasurementType;
 /* #endregion */
 
+pub type ReportData <'a> = HashMap<&'a str, HashMap<&'a str, HashMap<MeasurementType, Duration>>>;
+
 pub struct Report<'a> {
-    measurement_duration: HashMap<&'a str, HashMap<&'a str, HashMap<MeasurementType, Duration>>>,
+    measurement_duration: RwLock<ReportData<'a>>,
 }
 
 impl<'a> Report<'a> {
     pub fn new() -> Report<'a> {
         Report {
-            measurement_duration: HashMap::new()
+            measurement_duration: RwLock::default()
         }
     }
 
@@ -26,10 +29,12 @@ impl<'a> Report<'a> {
         let finish_time = SystemTime::now();
 
         let duration = finish_time.duration_since(start_time).expect("Start time should be earlier to finish time");
-        self.measurement_duration
-            .entry(test_count).or_default()
-            .entry(json_name).or_default()
-            .insert(measurement_type, duration);
+        {
+            self.measurement_duration.write().expect("Some other holder of measurement_duration panic, can't update it anymore")
+                .entry(test_count).or_default()
+                .entry(json_name).or_default()
+                .insert(measurement_type, duration);
+        }
         
         function_result
     }
@@ -42,16 +47,18 @@ impl<'a> Report<'a> {
         let finish_time = SystemTime::now();
 
         let duration = finish_time.duration_since(start_time).expect("Start time should be earlier to finish time");
-        self.measurement_duration
-            .entry(test_count).or_default()
-            .entry(json_name).or_default()
-            .insert(measurement_type, duration);
+        {
+            self.measurement_duration.write().expect("Some other holder of measurement_duration panic, can't update it anymore")
+                .entry(test_count).or_default()
+                .entry(json_name).or_default()
+                .insert(measurement_type, duration);
+        }
 
         function_result
     }
 
-    pub fn get_measures(&self) -> &HashMap<&str, HashMap<&str, HashMap<MeasurementType, Duration>>> {
-        &self.measurement_duration
+    pub fn get_measures(&self) -> RwLockReadGuard<ReportData<'a>> {
+        self.measurement_duration.read().expect("Some other holder of measurement_duration panic, can't read it anymore")
     }
 }
 
@@ -79,7 +86,8 @@ mod tests {
             std::thread::sleep(Duration::from_millis(1000));
         });
 
-        let test_map = reporter.get_measures().get(test_case).expect("No test map");
+        let measurements = reporter.get_measures();
+        let test_map = measurements.get(test_case).expect("No test map");
         let json_map = test_map.get(json_name).expect("No json map");
         let duration = json_map.get(&measurement_type).expect("No duration for measurement type");
         let duration = duration.as_millis();
