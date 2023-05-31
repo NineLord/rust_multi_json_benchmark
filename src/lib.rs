@@ -17,6 +17,7 @@ pub mod test_json {
     pub mod config;
     pub mod excel_generator;
     pub mod measurement_types;
+    pub mod measurement;
     pub mod reporter;
     pub mod run_test_loop;
 }

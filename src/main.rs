@@ -106,10 +106,12 @@ struct OptionalArguments {
 
 // Example: Shaked-TODO make an example
 
-async fn foo(num: i32) {
+async fn foo(num: i32) { // Shaked-TODO: delete this
+    // println!("[{}] Hello! ; Strong={} ; Weak={}", num, Arc::strong_count(&REPORT_INSTANCE), Arc::weak_count(&REPORT_INSTANCE));
     println!("[{}] Hello!", num);
     tokio::time::sleep(Duration::from_millis(1000)).await;
     println!("[{}] Goodbye!", num);
+    // println!("[{}] Goodbye! ; Strong={} ; Weak={}", num, Arc::strong_count(&REPORT_INSTANCE), Arc::weak_count(&REPORT_INSTANCE));
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -137,9 +139,15 @@ async fn async_main(options: OptionalArguments) -> Result<(), Box<dyn Error>> {
     for index in 0..10 {
         // let mut reporter = Arc::clone(&REPORT_INSTANCE);
         let handler = tokio::task::spawn(async move {
+            Report::async_measure(
+                format!("test_count {}", index),
+                "json_name",
+                MeasurementType::GenerateJson,
+                || foo(index)
+            ).await;
             // reporter.write().await
             //     .async_measure(format!("test_count {}", index), "json_name", MeasurementType::GenerateJson, || foo(index)).await;
-            foo(index).await;
+            // foo(index).await;
         });
         handlers.push(handler);
     }
