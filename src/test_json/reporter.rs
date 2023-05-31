@@ -3,7 +3,7 @@
 use std::time::{SystemTime, Duration};
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::{RwLock, RwLockReadGuard};
 
 // Project
 use super::measurement_types::MeasurementType;
@@ -30,7 +30,7 @@ impl<'a> Report<'a> {
 
         let duration = finish_time.duration_since(start_time).expect("Start time should be earlier to finish time");
         {
-            self.measurement_duration.write().expect("Some other holder of measurement_duration panic, can't update it anymore")
+            self.measurement_duration.blocking_write()
                 .entry(test_count).or_default()
                 .entry(json_name).or_default()
                 .insert(measurement_type, duration);
@@ -48,7 +48,7 @@ impl<'a> Report<'a> {
 
         let duration = finish_time.duration_since(start_time).expect("Start time should be earlier to finish time");
         {
-            self.measurement_duration.write().expect("Some other holder of measurement_duration panic, can't update it anymore")
+            self.measurement_duration.write().await
                 .entry(test_count).or_default()
                 .entry(json_name).or_default()
                 .insert(measurement_type, duration);
@@ -58,7 +58,11 @@ impl<'a> Report<'a> {
     }
 
     pub fn get_measures(&self) -> RwLockReadGuard<ReportData<'a>> {
-        self.measurement_duration.read().expect("Some other holder of measurement_duration panic, can't read it anymore")
+        self.measurement_duration.blocking_read()
+    }
+
+    pub async fn async_get_measures(&self) -> RwLockReadGuard<ReportData<'a>> {
+        self.measurement_duration.read().await
     }
 }
 

@@ -118,6 +118,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         if options.debug {
             println!("{:#?}", options);
         }
+        // tokio::task::spawn(async {}); // Don't block here! need to have .await very soon here
+        // tokio::task::spawn_blocking(|| {}); // blocking here is ok!
     });
 
     // let mut excel_generator = ExcelGenerator::new(
