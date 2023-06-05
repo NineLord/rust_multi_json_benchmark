@@ -93,6 +93,18 @@ impl <'a> ExcelGenerator<'a> {
 
             current_row += 1;
         }
+
+        current_row = 0;
+        current_row = self.set_colorful_title(&mut worksheet, current_row, 3, "Averages of this Test")?;
+
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Generating JSONs", MeasurementType::GenerateJson, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Iterating JSONs Iteratively - BFS", MeasurementType::IterateIteratively, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Iterating JSONs Recursively - DFS", MeasurementType::IterateRecursively, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Deserializing JSONs", MeasurementType::DeserializeJson, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Serializing JSONs", MeasurementType::SerializeJson, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Totals", MeasurementType::Total, &mut test_data_collectors)?;
+        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch, &mut test_data_collectors)?;
+
         Ok(())
     }
 
@@ -104,6 +116,21 @@ impl <'a> ExcelGenerator<'a> {
             column + 1,
             title,
             Some(&self.format_colorful))?;
+        Ok(row + 1)
+    }
+
+    fn add_test_average_data(&self, worksheet: &mut Worksheet, row: u32, column: u16,
+        title: &'static str, measurement_type: MeasurementType,
+        test_data_collectors: &mut HashMap<MeasurementType, MathDataCollector>)
+    -> Result<u32, Box<dyn Error + Send + Sync>> {
+        if let Some(value) = test_data_collectors
+            .get(&measurement_type)
+            .ok_or_else(|| format!("test_data_collectors does not contain the measurement type: {:?}", measurement_type))?
+            .get_average() {
+            worksheet.write_string(row, column, title, Some(&self.format_border))?;
+            worksheet.write_number(row, column + 1, value, Some(&self.format_border_center))?;
+        }
+
         Ok(row + 1)
     }
 
