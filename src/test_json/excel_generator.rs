@@ -3,27 +3,18 @@
 use std::{
     error::Error,
     time::Duration,
-    collections::HashMap, sync::Arc,
+    collections::HashMap, sync::Arc, hash::Hash,
 };
 
+use strum::IntoEnumIterator;
 // 3rd Party
 use xlsxwriter::{Workbook, XlsxError, Worksheet, Format, format::{FormatBorder, FormatAlignment, FormatVerticalAlignment}};
 
 // Project
 use crate::utils::math_data_collector::MathDataCollector;
 
-use super::config::Configs;
+use super::{config::Configs, measurement_types::MeasurementType};
 /* #endregion */
-
-struct MathDataCollectors {
-    average_generating_jsons: MathDataCollector,
-    average_iterating_jsons_iteratively: MathDataCollector,
-    average_iterating_jsons_recursively: MathDataCollector,
-    average_deserializing_jsons: MathDataCollector,
-    average_serializing_jsons: MathDataCollector,
-    total_average_cpu: MathDataCollector,
-    total_average_ram: MathDataCollector,
-}
 
 pub struct ExcelGenerator<'a> {
     about_information: &'a Configs,
@@ -31,8 +22,18 @@ pub struct ExcelGenerator<'a> {
     format_border: Format,
     format_border_center: Format,
     json_names: Vec<Arc<String>>,
+    total_test_length: Duration,
     worksheet_names: Vec<String>,
-    // math_data_collectors: MathDataCollectors,
+    averages_per_jsons: HashMap<Arc<String>, HashMap<MeasurementType, MathDataCollector>>,
+    averages_all_jsons: HashMap<MeasurementType, MathDataCollector>,
+}
+
+fn get_data_collectors_for_each_test() -> HashMap<MeasurementType, MathDataCollector> {
+    let mut data_collectors = HashMap::new();
+    for measurement_type in MeasurementType::iter() {
+        data_collectors.insert(measurement_type, MathDataCollector::new());
+    }
+    data_collectors
 }
 
 impl <'a> ExcelGenerator<'a> {
@@ -46,13 +47,22 @@ impl <'a> ExcelGenerator<'a> {
         format_border_center.set_align(FormatAlignment::Center);
         format_border_center.set_vertical_align(FormatVerticalAlignment::VerticalTop);
 
+        let mut averages_per_jsons = HashMap::new();
+        for json_name in json_names.iter() {
+            let json_name = Arc::clone(json_name);
+            averages_per_jsons.insert(json_name, get_data_collectors_for_each_test());
+        }
+
         Ok(ExcelGenerator {
             about_information: configs,
             workbook: Workbook::new(path_to_save_file)?,
             format_border,
             format_border_center,
             json_names,
+            total_test_length,
             worksheet_names: vec!(),
+            averages_per_jsons,
+            averages_all_jsons: get_data_collectors_for_each_test(),
         })
     }
     // pub fn new(path_to_save_file: &'a str, json_path: &'a str, sample_interval: &'a Duration, number_of_letters: u8, depth: u8, number_of_children: u8) ->
