@@ -20,7 +20,7 @@ use serde_json::{ Value, json };
 use tokio::{runtime::Builder, sync::RwLock, task::{self, JoinSet}, join};
 
 // Project
-use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE, run_test_loop::RunTestLoop, excel_generator, measurement::Measurement}};
+use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::{REPORT_INSTANCE, ReportData}, run_test_loop::RunTestLoop, excel_generator, measurement::Measurement}};
 use rust_multi_json_benchmark::search_tree::{ breadth_first_search, depth_first_search };
 use rust_multi_json_benchmark::test_json::{
     config::{Config, Configs},
@@ -171,18 +171,15 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error 
         test_names,
         total_test_length,
         &options.configs
-    );
+    )?;
+
+    {
+        let reporter = REPORT_INSTANCE.read().await;
+        let report: &ReportData = reporter.get_measures();
+        for (test_name, test_case) in report {
+            excel_generator.append_worksheet(test_name, test_case)?;
+        }
+    }
 
     Ok(())
-
-    // let mut excel_generator = ExcelGenerator::new(
-    //     options.path_to_save_file.to_str().ok_or("Invalid path to save file")?,
-    //     options.json_path.to_str().ok_or("Invalid path to json file")?,
-    //     &options.sample_interval,
-    //     options.number_of_letters,
-    //     options.depth,
-    //     options.number_of_children
-    // )?;
-    //     excel_generator.append_worksheet(format!("Test {}", count + 1), reporter.get_measures(), &pc_usage)?;
-    // }
 }
