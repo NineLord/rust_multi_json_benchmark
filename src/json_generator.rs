@@ -27,13 +27,13 @@ impl Generator {
         }
     }
 
-    pub fn generate_json(charachters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Result<Value, Box<dyn Error>> {
+    pub fn generate_json(charachters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Result<Value, Box<dyn Error + Send + Sync>> {
         let generator = Generator::new(charachters_poll, number_of_letters, depth, number_of_children);
 
         generator.generate_full_tree()
     }
 
-    fn generate_full_tree(&self) -> Result<Value, Box<dyn Error>> {
+    fn generate_full_tree(&self) -> Result<Value, Box<dyn Error + Send + Sync>> {
         let mut root = Map::new();
         
         /* #region Edge Cases */
@@ -114,7 +114,7 @@ impl Generator {
         }
     }
 
-    fn add_none_leaf_children<'a, 'b, I>(&self, iterator: I, next_level_nodes: &'b mut Vec<&'a mut Value>) -> Result<(), Box<dyn Error>>
+    fn add_none_leaf_children<'a, 'b, I>(&self, iterator: I, next_level_nodes: &'b mut Vec<&'a mut Value>) -> Result<(), Box<dyn Error + Send + Sync>>
     where I: Iterator<Item = &'a mut Value> {
         for next_level_node in iterator {
             match next_level_node {
@@ -143,7 +143,7 @@ impl Generator {
         }
     }
 
-    fn add_leaf_children<'a, I>(&self, iterator: I) -> Result<(), Box<dyn Error>>
+    fn add_leaf_children<'a, I>(&self, iterator: I) -> Result<(), Box<dyn Error + Send + Sync>>
     where I: Iterator<Item = &'a mut Value> {
         for next_level_node in iterator {
             match next_level_node {

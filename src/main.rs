@@ -17,10 +17,10 @@ use home::home_dir;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use serde_json::{ Value, json };
-use tokio::{runtime::Builder, sync::RwLock};
+use tokio::{runtime::Builder, sync::RwLock, task};
 
 // Project
-use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE}};
+use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE, run_test_loop::RunTestLoop}};
 use rust_multi_json_benchmark::search_tree::{ breadth_first_search, depth_first_search };
 use rust_multi_json_benchmark::test_json::{
     config::{Config, Configs},
@@ -54,8 +54,6 @@ static DEFAULT_PATH_TO_DEBUG_DIRECTORY: Lazy<String> = Lazy::new(|| {
         .into_string()
         .expect("Couldn't get DEFAULT_PATH_TO_DEBUG_DIRECTORY")
 });
-
-static CHARACTER_POLL: &str = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz!@#$%&";
 /* #endregion */
 
 /* #region CLI Arguments */
@@ -106,14 +104,6 @@ struct OptionalArguments {
 
 // Example: Shaked-TODO make an example
 
-async fn foo(num: i32) { // Shaked-TODO: delete this
-    // println!("[{}] Hello! ; Strong={} ; Weak={}", num, Arc::strong_count(&REPORT_INSTANCE), Arc::weak_count(&REPORT_INSTANCE));
-    println!("[{}] Hello!", num);
-    tokio::time::sleep(Duration::from_millis(1000)).await;
-    println!("[{}] Goodbye!", num);
-    // println!("[{}] Goodbye! ; Strong={} ; Weak={}", num, Arc::strong_count(&REPORT_INSTANCE), Arc::weak_count(&REPORT_INSTANCE));
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let options = OptionalArguments::from_args();
     let runtime = if options.single_thread {
@@ -130,37 +120,33 @@ fn main() -> Result<(), Box<dyn Error>> {
     runtime.block_on(async { async_main(options).await })
 }
 
-async fn async_main(options: OptionalArguments) -> Result<(), Box<dyn Error>> {
+async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error>> {
+    
     if options.debug {
         println!("{:#?}", options);
     }
 
-    let mut handlers = vec!();
-    for index in 0..10 {
-        // let mut reporter = Arc::clone(&REPORT_INSTANCE);
-        let handler = tokio::task::spawn(async move {
-            Report::async_measure(
-                format!("test_count {}", index),
-                "json_name",
-                MeasurementType::GenerateJson,
-                || foo(index)
-            ).await;
-            // reporter.write().await
-            //     .async_measure(format!("test_count {}", index), "json_name", MeasurementType::GenerateJson, || foo(index)).await;
-            // foo(index).await;
+    for config in options.configs.iter_mut() {
+        config.raw = Some(Arc::new(fs::read_to_string(&config.path)?));
+    }
+
+    let value_to_search: i64 = 2_000_000_000;
+    let value_to_search = json!(value_to_search);
+    let test_runner = Arc::new(RunTestLoop::new(options.test_counter, value_to_search));
+    for config in options.configs {
+        let test_runner = Arc::clone(&test_runner);
+        let raw_json = config.raw.expect("Config doesn't contain raw of the JSON file");
+        task::spawn_blocking(move || {
+            test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json);
         });
-        handlers.push(handler);
+        // test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json);
     }
 
-    for handler in handlers {
-        handler.await?;
-    }
-
-    {
-        let y = REPORT_INSTANCE.read().await;
-        let x = y.get_measures();
-        println!("Result: {:#?}", x);
-    }
+    // let run = RunTestLoop {
+    //     value_to_search: Arc::new(json!(x))
+    // };
+    // let raw_json = fs::read_to_string(Path::new("/home/js.json"))?;
+    // run.run_single_test(String::from("test_case"), "json_name", 8, 2, 2, raw_json);
 
     // tokio::task::spawn(async {}); // Don't block here! need to have .await very soon here
     // tokio::task::spawn_blocking(|| {}); // blocking here is ok!
@@ -183,12 +169,12 @@ async fn async_main(options: OptionalArguments) -> Result<(), Box<dyn Error>> {
     // for count in 0..options.test_counter {
     //     /* #region Test preparations */
     //     let mut reporter = Report::new();
-    //     let (main_sender, thread_reciver) = mpsc::channel();
-    //     let (thread_sender, main_reciver) = mpsc::channel();
+    //     let (main_sender, thread_receiver) = mpsc::channel();
+    //     let (thread_sender, main_receiver) = mpsc::channel();
     //     let pc_usage_exporter_thread = thread::spawn(move ||
     //         pc_usage_exporter::main(
     //             thread_sender,
-    //             thread_reciver,
+    //             thread_receiver,
     //             &options.sample_interval));
     //     /* #endregion */
         
@@ -229,7 +215,7 @@ async fn async_main(options: OptionalArguments) -> Result<(), Box<dyn Error>> {
     //     main_sender.send(()).expect("Couldn't terminate PC usage thread");
     //     pc_usage_exporter_thread.join().expect("Couldn't join pc_usage_exporter_thread");
     //     let mut pc_usage = vec![];
-    //     for received in main_reciver {
+    //     for received in main_receiver {
     //         pc_usage.push(received);
     //     }
     //     /* #endregion */

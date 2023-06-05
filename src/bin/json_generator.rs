@@ -61,7 +61,7 @@ struct OptionalArguments {
 
 // Example: clear ; cargo run --bin json_generator -- -d10 -m5 -n8 /mnt/c/Users/Shaked/Documents/Mine/IdeaProjects/PreReactivePoc/junk/hugeJson_numberOfLetters8_depth10_children5.json
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let options = OptionalArguments::from_args();
     let json = Generator::generate_json(ALPHABET, options.number_of_letters, options.depth, options.number_of_children)?;
 
