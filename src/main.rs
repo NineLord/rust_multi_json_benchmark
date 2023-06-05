@@ -20,7 +20,7 @@ use serde_json::{ Value, json };
 use tokio::{runtime::Builder, sync::RwLock, task::{self, JoinSet}, join};
 
 // Project
-use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE, run_test_loop::RunTestLoop}};
+use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE, run_test_loop::RunTestLoop, excel_generator, measurement::Measurement}};
 use rust_multi_json_benchmark::search_tree::{ breadth_first_search, depth_first_search };
 use rust_multi_json_benchmark::test_json::{
     config::{Config, Configs},
@@ -126,8 +126,11 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error 
     }
 
     /* #region Test preparations */
+    let mut test_names = Vec::with_capacity(options.configs.len());
+
     for config in options.configs.iter_mut() {
         config.raw = Some(Arc::new(fs::read_to_string(&config.path)?));
+        test_names.push(Arc::clone(&config.name));
     }
 
     let value_to_search: i64 = 2_000_000_000;
@@ -137,22 +140,38 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error 
     /* #endregion */
 
     /* #region Testing */
-    for config in options.configs {
+    let mut total_test_length = Measurement::new();
+    for config in options.configs.iter() {
         let test_runner = Arc::clone(&test_runner);
-        let raw_json = config.raw.expect("Config doesn't contain raw of the JSON file");
+        let json_name = Arc::clone(&config.name);
+        let number_of_letters = config.number_of_letters;
+        let depth = config.depth;
+        let number_of_children = config.number_of_children;
+        let raw_json = Arc::clone(config.raw.as_ref().expect("Config doesn't contain raw of the JSON file"));
         task_handlers.push(task::spawn(async move {
-            test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json).await
+            test_runner.run_test(json_name, number_of_letters, depth, number_of_children, raw_json).await
         }));
     }
     for join_handler in task_handlers {
         join_handler.await??
     }
+    total_test_length.set_finish_time();
+    let total_test_length = total_test_length
+        .get_duration()
+        .expect("Didn't start measurement of the whole test");
     /* #endregion */
 
-    { // Shaked-TODO: delete this
+    if options.debug {
         let reporter = REPORT_INSTANCE.read().await;
-        println!("Result: {:#?}", reporter.get_measures());
+        println!("{:#?}\nWhole test: {}", reporter.get_measures(), total_test_length.as_millis());
     }
+
+    let mut excel_generator = ExcelGenerator::new(
+        options.path_to_save_file.to_str().ok_or("Invalid path to save file")?,
+        test_names,
+        total_test_length,
+        &options.configs
+    );
 
     Ok(())
 

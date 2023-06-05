@@ -3,7 +3,7 @@
 use std::{
     error::Error,
     time::Duration,
-    collections::HashMap,
+    collections::HashMap, sync::Arc,
 };
 
 // 3rd Party
@@ -11,6 +11,8 @@ use xlsxwriter::{Workbook, XlsxError, Worksheet, Format, format::{FormatBorder, 
 
 // Project
 use crate::utils::math_data_collector::MathDataCollector;
+
+use super::config::Configs;
 /* #endregion */
 
 struct MathDataCollectors {
@@ -23,34 +25,37 @@ struct MathDataCollectors {
     total_average_ram: MathDataCollector,
 }
 
-struct AboutInformation<'b> {
-    json_path: &'b str,
-    sample_interval: &'b Duration,
-    number_of_letters: u8,
-    depth: u8,
-    number_of_children: u8,
-}
-
 pub struct ExcelGenerator<'a> {
-    about_information: AboutInformation<'a>,
+    about_information: &'a Configs,
     workbook: Workbook,
     format_border: Format,
     format_border_center: Format,
+    json_names: Vec<Arc<String>>,
     worksheet_names: Vec<String>,
-    math_data_collectors: MathDataCollectors,
+    // math_data_collectors: MathDataCollectors,
 }
 
-impl<'a> ExcelGenerator<'a> {
+impl <'a> ExcelGenerator<'a> {
+    pub fn new(path_to_save_file: &'a str, json_names: Vec<Arc<String>>, total_test_length: Duration, configs: &'a Configs)
+    -> Result<ExcelGenerator<'a>, Box<dyn Error + Send + Sync>> {
+        let mut format_border = Format::new();
+        format_border.set_border(FormatBorder::Thin);
+
+        let mut format_border_center = Format::new();
+        format_border_center.set_border(FormatBorder::Thin);
+        format_border_center.set_align(FormatAlignment::Center);
+        format_border_center.set_vertical_align(FormatVerticalAlignment::VerticalTop);
+
+        Ok(ExcelGenerator {
+            about_information: configs,
+            workbook: Workbook::new(path_to_save_file)?,
+            format_border,
+            format_border_center,
+            json_names,
+            worksheet_names: vec!(),
+        })
+    }
     // pub fn new(path_to_save_file: &'a str, json_path: &'a str, sample_interval: &'a Duration, number_of_letters: u8, depth: u8, number_of_children: u8) ->
-    // Result<ExcelGenerator<'a>, Box<dyn Error>> {
-    //     let mut format_border = Format::new();
-    //     format_border.set_border(FormatBorder::Thin);
-
-    //     let mut format_border_center = Format::new();
-    //     format_border_center.set_border(FormatBorder::Thin);
-    //     format_border_center.set_align(FormatAlignment::Center);
-    //     format_border_center.set_vertical_align(FormatVerticalAlignment::VerticalTop);
-
     //     Ok(ExcelGenerator {
     //         about_information: AboutInformation {
     //             json_path,
@@ -75,20 +80,19 @@ impl<'a> ExcelGenerator<'a> {
     //     })
     // }
 
-    // /* #region Adding Data */
-    // pub fn append_worksheet(&mut self, worksheet_name: String, measures: &HashMap<&str, Duration>, pc_usage: &[PcUsage]) -> Result<(), Box<dyn Error>> {
-    //     self.worksheet_names.push(worksheet_name);
-    //     let worksheet_name = self.worksheet_names.last().ok_or("Couldn't get the worksheet_name")?;
-    //     let mut worksheet = self.workbook.add_worksheet(Some(worksheet_name))?;
-    //     worksheet.freeze_panes(1, 0);
+    /* #region Adding Data */
+    pub fn append_worksheet(&mut self, worksheet_name: String, measures: &HashMap<&str, Duration>) -> Result<(), Box<dyn Error>> {
+        self.worksheet_names.push(worksheet_name);
+        let worksheet_name = self.worksheet_names.last().ok_or("Couldn't get the worksheet_name")?;
+        let mut worksheet = self.workbook.add_worksheet(Some(worksheet_name))?;
 
     //     ExcelGenerator::generate_titles(&mut worksheet, &self.format_border, &self.format_border_center)?;
     //     #[allow(unused)]
     //     let (column_cpu_usage, column_ram_usage) =
     //         ExcelGenerator::add_data(&mut self.math_data_collectors, &mut worksheet, measures, pc_usage, &self.format_border_center)?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     // fn generate_titles(worksheet: &mut Worksheet, format_borader: &Format, format_borader_center: &Format) -> Result<(), XlsxError> {
     //     let format_borader = Some(format_borader);
