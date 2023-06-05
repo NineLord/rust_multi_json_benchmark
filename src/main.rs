@@ -176,8 +176,12 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error 
     {
         let reporter = REPORT_INSTANCE.read().await;
         let report: &ReportData = reporter.get_measures();
-        for (test_name, test_case) in report {
-            excel_generator.append_worksheet(test_name, test_case)?;
+        for counter in 1..=options.test_counter {
+            let test_name = format!("Test {}", counter);
+            let test_case = report
+                .get(&test_name)
+                .ok_or_else(|| format!("Report doesn't contain the test name: {}", test_name))?;
+            excel_generator.append_worksheet(&test_name, test_case)?;
         }
     }
 
