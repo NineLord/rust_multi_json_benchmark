@@ -11,24 +11,24 @@ use crate::utils::{ json_type, randomizer };
 
 #[derive(Debug)]
 pub struct Generator {
-    charachters_poll: Vec<char>,
+    characters_poll: Vec<char>,
     number_of_letters: usize,
     depth: u8,
     number_of_children: u8,
 }
 
 impl Generator {
-    fn new(charachters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Generator {
+    fn new(characters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Generator {
         Generator {
-            charachters_poll: charachters_poll.chars().collect(),
+            characters_poll: characters_poll.chars().collect(),
             number_of_letters: number_of_letters.into(),
             depth,
             number_of_children
         }
     }
 
-    pub fn generate_json(charachters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Result<Value, Box<dyn Error + Send + Sync>> {
-        let generator = Generator::new(charachters_poll, number_of_letters, depth, number_of_children);
+    pub fn generate_json(characters_poll: &str, number_of_letters: u8, depth: u8, number_of_children: u8) -> Result<Value, Box<dyn Error + Send + Sync>> {
+        let generator = Generator::new(characters_poll, number_of_letters, depth, number_of_children);
 
         generator.generate_full_tree()
     }
@@ -88,7 +88,7 @@ impl Generator {
 
     /* #region Helper methods */
     fn get_random_node_character(&self) -> &char {
-        randomizer::get_random_value_from_array(&self.charachters_poll)
+        randomizer::get_random_value_from_array(&self.characters_poll)
     }
 
     fn get_random_node_name(&self) -> String {

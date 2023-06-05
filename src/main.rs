@@ -5,7 +5,7 @@ use std::{
     env,
     fs,
     thread,
-    time::Duration,
+    time::{Duration, SystemTime},
     error::Error,
     path::{Path, PathBuf},
     sync::{mpsc, Arc},
@@ -17,7 +17,7 @@ use home::home_dir;
 use once_cell::sync::Lazy;
 use structopt::StructOpt;
 use serde_json::{ Value, json };
-use tokio::{runtime::Builder, sync::RwLock, task};
+use tokio::{runtime::Builder, sync::RwLock, task::{self, JoinSet}, join};
 
 // Project
 use rust_multi_json_benchmark::{json_generator, test_json::{measurement_types::MeasurementType, reporter::REPORT_INSTANCE, run_test_loop::RunTestLoop}};
@@ -65,7 +65,7 @@ fn parse_config(source: &str) -> Result<Configs, Box<dyn Error>> {
 
 fn parse_none_zero_u8(source: &str) -> Result<u8, Box<dyn Error>> {
     let num: u8 = source.parse()?;
-    if (num == 0) {
+    if num == 0 {
         Err("The number has to be none zero".into())
     } else {
         Ok(num)
@@ -104,7 +104,7 @@ struct OptionalArguments {
 
 // Example: Shaked-TODO make an example
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let options = OptionalArguments::from_args();
     let runtime = if options.single_thread {
         Builder::new_current_thread()
@@ -120,12 +120,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     runtime.block_on(async { async_main(options).await })
 }
 
-async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error>> {
-    
+async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error + Send + Sync>> {    
     if options.debug {
         println!("{:#?}", options);
     }
 
+    /* #region Test preparations */
     for config in options.configs.iter_mut() {
         config.raw = Some(Arc::new(fs::read_to_string(&config.path)?));
     }
@@ -133,23 +133,26 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error>
     let value_to_search: i64 = 2_000_000_000;
     let value_to_search = json!(value_to_search);
     let test_runner = Arc::new(RunTestLoop::new(options.test_counter, value_to_search));
+    let mut task_handlers = Vec::with_capacity(options.configs.len());
+    /* #endregion */
+
+    /* #region Testing */
     for config in options.configs {
         let test_runner = Arc::clone(&test_runner);
         let raw_json = config.raw.expect("Config doesn't contain raw of the JSON file");
-        task::spawn_blocking(move || {
-            test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json);
-        });
-        // test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json);
+        task_handlers.push(task::spawn(async move {
+            test_runner.run_test(config.name, config.number_of_letters, config.depth, config.number_of_children, raw_json).await
+        }));
     }
+    for join_handler in task_handlers {
+        join_handler.await??
+    }
+    /* #endregion */
 
-    // let run = RunTestLoop {
-    //     value_to_search: Arc::new(json!(x))
-    // };
-    // let raw_json = fs::read_to_string(Path::new("/home/js.json"))?;
-    // run.run_single_test(String::from("test_case"), "json_name", 8, 2, 2, raw_json);
-
-    // tokio::task::spawn(async {}); // Don't block here! need to have .await very soon here
-    // tokio::task::spawn_blocking(|| {}); // blocking here is ok!
+    { // Shaked-TODO: delete this
+        let reporter = REPORT_INSTANCE.read().await;
+        println!("Result: {:#?}", reporter.get_measures());
+    }
 
     Ok(())
 
@@ -161,65 +164,6 @@ async fn async_main(mut options: OptionalArguments) -> Result<(), Box<dyn Error>
     //     options.depth,
     //     options.number_of_children
     // )?;
-    // let raw_json = fs::read_to_string(options.json_path.as_path())
-    //     .expect("Couldn't read the input JSON file");
-    // let value_to_search: i64 = 2_000_000_000;
-    // let value_to_search: Value = json!(value_to_search);
-
-    // for count in 0..options.test_counter {
-    //     /* #region Test preparations */
-    //     let mut reporter = Report::new();
-    //     let (main_sender, thread_receiver) = mpsc::channel();
-    //     let (thread_sender, main_receiver) = mpsc::channel();
-    //     let pc_usage_exporter_thread = thread::spawn(move ||
-    //         pc_usage_exporter::main(
-    //             thread_sender,
-    //             thread_receiver,
-    //             &options.sample_interval));
-    //     /* #endregion */
-        
-    //     /* #region Testing */
-    //     let title = String::from("Test Generating JSON");
-    //     reporter.measure(&title, ||
-    //         json_generator::Generator::generate_json(
-    //             CHARACTER_POLL,
-    //             options.number_of_letters,
-    //             options.depth,
-    //             options.number_of_children
-    //         )
-    //     )?;
-
-    //     let title = String::from("Test Deserialize JSON");
-    //     let json: Value = reporter.measure(&title, ||
-    //         serde_json::from_str(&raw_json)
-    //             .expect("Couldn't parse the input JSON")
-    //     );
-
-    //     let title = String::from("Test Iterate Iteratively");
-    //     reporter.measure(&title, ||
-    //         assert!(!breadth_first_search::run(&json, &value_to_search), "BFS the tree found value that shouldn't be in it: {}", value_to_search)
-    //     );
-
-    //     let title = String::from("Test Iterate Recursively");
-    //     reporter.measure(&title, ||
-    //         assert!(!depth_first_search::run(&json, &value_to_search), "DFS the tree found value that shouldn't be in it: {}", value_to_search)
-    //     );
-
-    //     let title = String::from("Test Serialize JSON");
-    //     reporter.measure(&title, ||
-    //         serde_json::to_string(&json)
-    //     )?;
-    //     /* #endregion */
-        
-    //     /* #region Getting PC Usage from other thread */
-    //     main_sender.send(()).expect("Couldn't terminate PC usage thread");
-    //     pc_usage_exporter_thread.join().expect("Couldn't join pc_usage_exporter_thread");
-    //     let mut pc_usage = vec![];
-    //     for received in main_receiver {
-    //         pc_usage.push(received);
-    //     }
-    //     /* #endregion */
-
     //     excel_generator.append_worksheet(format!("Test {}", count + 1), reporter.get_measures(), &pc_usage)?;
     // }
 }
