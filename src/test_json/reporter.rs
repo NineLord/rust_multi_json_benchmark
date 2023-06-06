@@ -49,16 +49,16 @@ impl Report {
         &self.measurement_duration
     }
 
-    pub fn measure<F, R>(test_count: String, json_name: Arc<String>, measurement_type: MeasurementType, function: F) -> R
+    pub fn measure<F, R>(test_count: String, json_name: Arc<String>, measurement_type: MeasurementType, function: F) -> Result<R, String>
     where F: FnOnce() -> R {
         { REPORT_INSTANCE.blocking_write().start_measure(test_count.clone(), Arc::clone(&json_name), measurement_type.clone()); }
         let function_result = function();
-        { REPORT_INSTANCE.blocking_write().finish_measure(&test_count, json_name, &measurement_type); }
+        { REPORT_INSTANCE.blocking_write().finish_measure(&test_count, json_name, &measurement_type)?; }
         
-        function_result
+        Ok(function_result)
     }
 
-    pub async fn async_measure<F: Future>(test_count: String, json_name: Arc<String>, measurement_type: MeasurementType, future: F) -> F::Output {
+    pub async fn async_measure<F: Future>(test_count: String, json_name: Arc<String>, measurement_type: MeasurementType, future: F) -> Result<F::Output, String> {
         {
             let mut reporter = REPORT_INSTANCE.write().await;
             reporter.start_measure(test_count.clone(), Arc::clone(&json_name), measurement_type.clone());
@@ -66,10 +66,10 @@ impl Report {
         let function_result = future.await;
         {
             let mut reporter = REPORT_INSTANCE.write().await;
-            reporter.finish_measure(&test_count, json_name, &measurement_type);
+            reporter.finish_measure(&test_count, json_name, &measurement_type)?;
         }
 
-        function_result
+        Ok(function_result)
     }
 }
 
@@ -91,7 +91,7 @@ mod tests {
         
         Report::measure(test_case.clone(), Arc::clone(&json_name), measurement_type.clone(), || {
             std::thread::sleep(Duration::from_millis(1000));
-        });
+        }).unwrap();
 
         let duration;
         {

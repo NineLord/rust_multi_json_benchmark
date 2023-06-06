@@ -53,22 +53,23 @@ impl RunTestLoop {
             self.run_single_test_without_total_measure(
                 test_count, json_name, number_of_letters, depth, number_of_children, raw_json
             )
-        ).await
+        ).await?
     }
 
     async fn run_single_test_without_total_measure(&self, test_count: String, json_name: Arc<String>, number_of_letters: u8, depth: u8, number_of_children: u8, raw_json: Arc<String>)
     -> Result<(), Box<dyn Error + Send + Sync>> {
-        RunTestLoop::test_generate_json(test_count.clone(), Arc::clone(&json_name), number_of_letters, depth, number_of_children).await??;
-        let json = RunTestLoop::test_deserialize_json(test_count.clone(), Arc::clone(&json_name), raw_json).await?;
+        RunTestLoop::test_generate_json(test_count.clone(), Arc::clone(&json_name), number_of_letters, depth, number_of_children).await???;
+        let json = RunTestLoop::test_deserialize_json(test_count.clone(), Arc::clone(&json_name), raw_json).await??;
         let json = Arc::new(json);
-        self.test_iterate_iteratively(test_count.clone(), Arc::clone(&json_name), Arc::clone(&json)).await?;
-        self.test_iterate_recursively(test_count.clone(), Arc::clone(&json_name), Arc::clone(&json)).await?;
-        RunTestLoop::test_serialize_json(test_count, json_name, json).await??;
+        self.test_iterate_iteratively(test_count.clone(), Arc::clone(&json_name), Arc::clone(&json)).await??;
+        self.test_iterate_recursively(test_count.clone(), Arc::clone(&json_name), Arc::clone(&json)).await??;
+        RunTestLoop::test_serialize_json(test_count, json_name, json).await???;
         Ok(())
     }
 
+    #[allow(clippy::type_complexity)]
     fn test_generate_json(test_count: String, json_name: Arc<String>, number_of_letters: u8, depth: u8, number_of_children: u8)
-    -> JoinHandle<Result<Value, Box<dyn Error + Send + Sync>>> {
+    -> JoinHandle<Result<Result<Value, Box<dyn Error + Send + Sync>>, String>> {
         task::spawn_blocking(move || {
             Report::measure(test_count, json_name, MeasurementType::GenerateJson, move ||
                 json_generator::Generator::generate_json(CHARACTER_POLL, number_of_letters, depth, number_of_children)
@@ -76,7 +77,7 @@ impl RunTestLoop {
         })
     }
 
-    fn test_deserialize_json(test_count: String, json_name: Arc<String>, raw_json: Arc<String>) -> JoinHandle<Value> {
+    fn test_deserialize_json(test_count: String, json_name: Arc<String>, raw_json: Arc<String>) -> JoinHandle<Result<Value, String>> {
         task::spawn_blocking(move || {
             Report::measure(test_count, json_name, MeasurementType::DeserializeJson, move ||
                 serde_json::from_str::<Value>(&raw_json).expect("Couldn't parse the input JSON")
@@ -84,7 +85,7 @@ impl RunTestLoop {
         })
     }
 
-    fn test_iterate_iteratively(&self, test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<()> {
+    fn test_iterate_iteratively(&self, test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<Result<(), String>> {
         let value_to_search = Arc::clone(&self.value_to_search);
         task::spawn_blocking(move || {
             Report::measure(test_count, json_name, MeasurementType::IterateIteratively, move || {
@@ -93,7 +94,7 @@ impl RunTestLoop {
         })
     }
 
-    fn test_iterate_recursively(&self, test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<()> {
+    fn test_iterate_recursively(&self, test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<Result<(), String>> {
         let value_to_search = Arc::clone(&self.value_to_search);
         task::spawn_blocking(move || {
             Report::measure(test_count, json_name, MeasurementType::IterateRecursively, move ||
@@ -102,7 +103,7 @@ impl RunTestLoop {
         })
     }
 
-    fn test_serialize_json(test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<Result<String, serde_json::Error>> {
+    fn test_serialize_json(test_count: String, json_name: Arc<String>, json: Arc<Value>) -> JoinHandle<Result<Result<String, serde_json::Error>, String>> {
         task::spawn_blocking(move || {
             Report::measure(test_count, json_name, MeasurementType::SerializeJson, move ||
                 serde_json::to_string::<Value>(&json)
