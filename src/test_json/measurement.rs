@@ -1,4 +1,7 @@
+/* #region Imports */
+// Standard
 use std::time::{SystemTime, Duration};
+/* #endregion */
 
 #[derive(Debug)]
 pub struct Measurement {
