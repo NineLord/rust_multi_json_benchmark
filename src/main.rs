@@ -97,7 +97,7 @@ struct OptionalArguments {
 }
 /* #endregion */
 
-// Example: Shaked-TODO make an example
+// Example: clear ; cargo run --bin json_tester -- ../rust_json_benchmark/junk/config_4.json 10 -s ./junk/report_rust.xlsx
 
 fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let options = OptionalArguments::from_args();
