@@ -123,11 +123,11 @@ impl <'a> ExcelGenerator<'a> {
         title: &'static str, measurement_type: MeasurementType,
         test_data_collectors: &mut HashMap<MeasurementType, MathDataCollector>)
     -> Result<u32, Box<dyn Error + Send + Sync>> {
+        worksheet.write_string(row, column, title, Some(&self.format_border))?;
         if let Some(value) = test_data_collectors
             .get(&measurement_type)
             .ok_or_else(|| format!("test_data_collectors does not contain the measurement type: {:?}", measurement_type))?
             .get_average() {
-            worksheet.write_string(row, column, title, Some(&self.format_border))?;
             worksheet.write_number(row, column + 1, value, Some(&self.format_border_center))?;
         }
 
@@ -212,8 +212,77 @@ impl <'a> ExcelGenerator<'a> {
     }
     /* #endregion */
 
-    fn close(&mut self) -> Result<(), XlsxError> {
-        // self.add_average_worksheet()?;
+    /* #region Add summary worksheet */
+    fn add_average_worksheet(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut worksheet = self.workbook.add_worksheet(Some("Average"))?;
+
+        let mut current_row = 0;
+        for json_name in &self.json_names {
+            let test_data = self.averages_per_jsons
+                .get(json_name)
+                .ok_or_else(|| format!("averages_per_jsons doesn't contain the JSON name: {}", json_name))?;
+
+            current_row = self.set_colorful_title(&mut worksheet, current_row, 0, json_name)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Generating JSONs", MeasurementType::GenerateJson, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Iterating JSONs Iteratively - BFS", MeasurementType::IterateIteratively, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Iterating JSONs Recursively - DFS", MeasurementType::IterateRecursively, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Deserializing JSONs", MeasurementType::DeserializeJson, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Serializing JSONs", MeasurementType::SerializeJson, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Totals", MeasurementType::Total, test_data)?;
+            current_row = self.add_average_data(&mut worksheet, current_row, 0, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch, test_data)?;
+
+            current_row += 1;
+        }
+
+        current_row = 0;
+        current_row = self.set_colorful_title(&mut worksheet, current_row, 3, "Averages of all Tests")?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Generating all JSONs", MeasurementType::GenerateJson)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Iterating all JSONs Iteratively - BFS", MeasurementType::IterateIteratively)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Iterating all JSONs Recursively - DFS", MeasurementType::IterateRecursively)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Deserializing all JSONs", MeasurementType::DeserializeJson)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Serializing a;; JSONs", MeasurementType::SerializeJson)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Totals", MeasurementType::Total)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch)?;
+
+        current_row += 1;
+        worksheet.write_string(current_row, 3, "Totals of all Tests Including Context Switch", Some(&self.format_border))?;
+        worksheet.write_number(current_row, 4, self.total_test_length.as_millis() as f64, Some(&self.format_border_center))?;
+
+        Ok(())
+    }
+
+    fn add_average_data(&self, worksheet: &mut Worksheet, row: u32, column: u16,
+        title: &'static str, measurement_type: MeasurementType,
+        test_data: &HashMap<MeasurementType, MathDataCollector>)
+    -> Result<u32, Box<dyn Error + Send + Sync>> {
+        worksheet.write_string(row, column, title, Some(&self.format_border))?;
+        if let Some(value) = test_data
+            .get(&measurement_type)
+            .ok_or_else(|| format!("test data does not contain the measurement type: {:?}", measurement_type))?
+            .get_average() {
+            worksheet.write_number(row, column + 1, value, Some(&self.format_border_center))?;
+        }
+        
+        Ok(row + 1)
+    }
+
+    fn add_average_average_data(&self, worksheet: &mut Worksheet, row: u32, column: u16,
+        title: &'static str, measurement_type: MeasurementType)
+    -> Result<u32, Box<dyn Error + Send + Sync>> {
+        worksheet.write_string(row, column, title, Some(&self.format_border))?;
+        if let Some(value) = self.averages_all_jsons
+            .get(&measurement_type)
+            .ok_or_else(|| format!("test data does not contain the measurement type: {:?}", measurement_type))?
+            .get_average() {
+            worksheet.write_number(row, column + 1, value, Some(&self.format_border_center))?;
+        }
+        
+        Ok(row + 1)
+    }
+    /* #endregion */
+
+    fn close(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        self.add_average_worksheet()?;
         // self.add_about_worksheet()?;
 
         Ok(())
