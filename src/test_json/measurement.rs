@@ -62,7 +62,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn must_set_finish_duration() {
-        let mut measurement = Measurement::default();
+        let measurement = Measurement::default();
         let result = measurement.get_duration();
 
         match result {

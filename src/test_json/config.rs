@@ -6,7 +6,7 @@ use std::{
 };
 
 // 3rd-Party
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 /* #endregion */
 
 /* #region Config */

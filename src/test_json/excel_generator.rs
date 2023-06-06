@@ -3,7 +3,7 @@
 use std::{
     error::Error,
     time::Duration,
-    collections::HashMap, sync::Arc, hash::Hash,
+    collections::HashMap, sync::Arc,
 };
 // 3rd Party
 use xlsxwriter::{Workbook, XlsxError, Worksheet, Format, format::{FormatBorder, FormatAlignment, FormatVerticalAlignment}};
@@ -11,7 +11,7 @@ use strum::IntoEnumIterator;
 
 // Project
 use crate::utils::math_data_collector::MathDataCollector;
-use super::{config::{Configs, self}, measurement_types::MeasurementType, measurement::Measurement};
+use super::{config::Configs, measurement_types::MeasurementType, measurement::Measurement};
 /* #endregion */
 
 pub struct ExcelGenerator<'a> {
@@ -103,7 +103,7 @@ impl <'a> ExcelGenerator<'a> {
         current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Deserializing JSONs", MeasurementType::DeserializeJson, &mut test_data_collectors)?;
         current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Serializing JSONs", MeasurementType::SerializeJson, &mut test_data_collectors)?;
         current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Totals", MeasurementType::Total, &mut test_data_collectors)?;
-        current_row = self.add_test_average_data(&mut worksheet, current_row, 3, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch, &mut test_data_collectors)?;
+        self.add_test_average_data(&mut worksheet, current_row, 3, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch, &mut test_data_collectors)?;
 
         Ok(())
     }
