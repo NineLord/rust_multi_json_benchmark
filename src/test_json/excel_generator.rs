@@ -11,7 +11,7 @@ use strum::IntoEnumIterator;
 
 // Project
 use crate::utils::math_data_collector::MathDataCollector;
-use super::{config::Configs, measurement_types::MeasurementType, measurement::Measurement};
+use super::{config::{Configs, self}, measurement_types::MeasurementType, measurement::Measurement};
 /* #endregion */
 
 pub struct ExcelGenerator<'a> {
@@ -281,9 +281,43 @@ impl <'a> ExcelGenerator<'a> {
     }
     /* #endregion */
 
+    /* #region Add about worksheet */
+    fn add_about_worksheet(&self) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let mut worksheet = self.workbook.add_worksheet(Some("About"))?;
+        
+        let mut current_row = 0;
+        for config in self.about_information.iter() {
+            current_row = self.set_colorful_title(&mut worksheet, current_row, 0, &config.name)?;
+
+            worksheet.write_string(current_row, 0, "Size", Some(&self.format_border))?;
+            worksheet.write_string(current_row, 1, &config.size, Some(&self.format_border))?;
+            current_row += 1;
+
+            worksheet.write_string(current_row, 0, "Number Of Letters", Some(&self.format_border))?;
+            worksheet.write_number(current_row, 1, config.number_of_letters as f64, Some(&self.format_border))?;
+            current_row += 1;
+
+            worksheet.write_string(current_row, 0, "Depth", Some(&self.format_border))?;
+            worksheet.write_number(current_row, 1, config.depth as f64, Some(&self.format_border))?;
+            current_row += 1;
+
+            worksheet.write_string(current_row, 0, "Number Of Children", Some(&self.format_border))?;
+            worksheet.write_number(current_row, 1, config.number_of_children as f64, Some(&self.format_border))?;
+            current_row += 1;
+
+            worksheet.write_string(current_row, 0, "Path", Some(&self.format_border))?;
+            worksheet.write_string(current_row, 1, config.path.to_str().ok_or("Invalid path to json file")?, Some(&self.format_border))?;
+            current_row += 1;
+
+            current_row += 1;
+        }
+        Ok(())
+    }
+    /* #endregion */
+
     fn close(&mut self) -> Result<(), Box<dyn Error + Send + Sync>> {
         self.add_average_worksheet()?;
-        // self.add_about_worksheet()?;
+        self.add_about_worksheet()?;
 
         Ok(())
     }
