@@ -84,8 +84,8 @@ struct OptionalArguments {
     path_to_save_file: PathBuf,
 
     /// Number of threads to use to run the test
-    #[structopt(short, long, parse(try_from_str = parse_none_zero_u8), default_value = "3")]
-    thread_count: u8,
+    #[structopt(short, long, parse(try_from_str = parse_none_zero_u8))]
+    thread_count: Option<u8>,
 
     /// If set, will run the program with single thread only (like NodeJS), the '--thread-count' flag will be ignored.
     #[structopt(long)]
@@ -106,10 +106,12 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             .enable_all()
             .build()
     } else {
-        Builder::new_multi_thread()
-            .enable_all()
-            .worker_threads(options.thread_count.into())
-            .build()
+        let mut runtime_builder = Builder::new_multi_thread();
+        runtime_builder.enable_all();
+        if let Some(thread_count) = options.thread_count {
+            runtime_builder.worker_threads(thread_count.into());
+        }
+        runtime_builder.build()
     }.expect("Failed building the Runtime");
 
     runtime.block_on(async { async_main(options).await })

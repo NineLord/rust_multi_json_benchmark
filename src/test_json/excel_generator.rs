@@ -240,7 +240,7 @@ impl <'a> ExcelGenerator<'a> {
         current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Iterating all JSONs Iteratively - BFS", MeasurementType::IterateIteratively)?;
         current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Iterating all JSONs Recursively - DFS", MeasurementType::IterateRecursively)?;
         current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Deserializing all JSONs", MeasurementType::DeserializeJson)?;
-        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Serializing a;; JSONs", MeasurementType::SerializeJson)?;
+        current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Serializing all JSONs", MeasurementType::SerializeJson)?;
         current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Totals", MeasurementType::Total)?;
         current_row = self.add_average_average_data(&mut worksheet, current_row, 3, "Average Totals Including Context Switch", MeasurementType::TotalIncludeContextSwitch)?;
 
