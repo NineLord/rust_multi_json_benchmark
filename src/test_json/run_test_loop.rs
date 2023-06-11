@@ -14,13 +14,13 @@ use super::{reporter::Report, measurement_types::MeasurementType};
 static CHARACTER_POLL: &str = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz!@#$%&";
 
 pub struct RunTestLoop {
-    test_count: u8,
+    test_count: u32,
     value_to_search: Arc<Value>,
 }
 
 impl RunTestLoop {
 
-    pub fn new(test_count: u8, value_to_search: Value) -> RunTestLoop {
+    pub fn new(test_count: u32, value_to_search: Value) -> RunTestLoop {
         RunTestLoop {
             test_count,
             value_to_search: Arc::new(value_to_search),

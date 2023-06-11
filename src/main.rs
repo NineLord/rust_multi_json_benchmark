@@ -58,8 +58,17 @@ fn parse_config(source: &str) -> Result<Configs, Box<dyn Error>> {
     Ok(configs)
 }
 
-fn parse_none_zero_u8(source: &str) -> Result<u8, Box<dyn Error>> {
-    let num: u8 = source.parse()?;
+fn parse_none_zero_u32(source: &str) -> Result<u32, Box<dyn Error>> {
+    let num: u32 = source.parse()?;
+    if num == 0 {
+        Err("The number has to be none zero".into())
+    } else {
+        Ok(num)
+    }
+}
+
+fn parse_none_zero_usize(source: &str) -> Result<usize, Box<dyn Error>> {
+    let num: usize = source.parse()?;
     if num == 0 {
         Err("The number has to be none zero".into())
     } else {
@@ -76,16 +85,16 @@ struct OptionalArguments {
     configs: Configs,
 
     /// The number of times will run the tests
-    #[structopt(parse(try_from_str = parse_none_zero_u8), default_value = "5")]
-    test_counter: u8,
+    #[structopt(parse(try_from_str = parse_none_zero_u32), default_value = "5")]
+    test_counter: u32,
 
     /// Absolute path to save the excel report file to
     #[structopt(short = "s", long = "save-file", parse(from_os_str), default_value = &DEFAULT_PATH_TO_SAVE_FILE)]
     path_to_save_file: PathBuf,
 
     /// Number of threads to use to run the test
-    #[structopt(short, long, parse(try_from_str = parse_none_zero_u8))]
-    thread_count: Option<u8>,
+    #[structopt(short, long, parse(try_from_str = parse_none_zero_usize))]
+    thread_count: Option<usize>,
 
     /// If set, will run the program with single thread only (like NodeJS), the '--thread-count' flag will be ignored.
     #[structopt(long)]
@@ -109,7 +118,7 @@ fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         let mut runtime_builder = Builder::new_multi_thread();
         runtime_builder.enable_all();
         if let Some(thread_count) = options.thread_count {
-            runtime_builder.worker_threads(thread_count.into());
+            runtime_builder.worker_threads(thread_count);
         }
         runtime_builder.build()
     }.expect("Failed building the Runtime");
